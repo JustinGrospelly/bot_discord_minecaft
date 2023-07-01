@@ -1,10 +1,10 @@
-# Discord import
+# importation
 import discord
 from discord.ext import commands
 from discord.ext import tasks
+import time
 
-# Serveur minecraft import 
-from mcstatus import JavaServer
+from variable import *
 
 # Définition des permission (intents)
 intents = discord.Intents.default()
@@ -14,23 +14,9 @@ bot = commands.Bot(command_prefix='!', intents=intents)
 
 # Définition de la tache en arrière-plan 
 @tasks.loop(seconds=10)
-async def my_background_task(server_ip, server_port):
-    Joueur_en_linge = 0
+async def my_background_task():
+    Joueur_en_linge = statu_serveur()
 
-    try :
-        # Créer une instance de MinecraftServer avec l'adresse IP et le port
-        server = JavaServer.lookup(f"{server_ip}:{server_port}")
-
-        # Obtenir l'état du serveur
-        status = server.status()
-
-        # Récupérer le nombre de joueurs connectés
-        Joueur_en_linge = status.players.online
-    except TimeoutError:
-        print("TimeoutError")
-    except Exception as e:
-        print("Erreur :", e)
-    
     # Si joueur en linge passé en actif (vert) est afficher le nombre de joueur 
     if Joueur_en_linge >= 1 :
         await bot.change_presence(status=discord.Status.online, activity=discord.Game(name=f"{Joueur_en_linge} joueurs en linge"))
@@ -43,19 +29,28 @@ async def my_background_task(server_ip, server_port):
     else :
         await bot.change_presence(status=discord.Status.dnd, activity=discord.Game(name="erreur"))
 
+@tasks.loop(seconds=10)
+async def my_background_task_2(message):
+    await message.edit(content=f"Il y a {statu_serveur()} joueur connecter sur le serveur  ")
 
 @bot.event
-async def on_ready():
-    # Paramètre pour l’axer au serveur Minecraft  
-    server_ip = "" # Ip du serveur
-    server_port = 25565 # Port du serveur de base 25565
-    
+async def on_ready():    
     # Démarrage de la tache en arrière-plan
-    my_background_task.start(server_ip, server_port)
+    my_background_task.start()
 
 # Commande de test de fonctionnement 
 @bot.command()
 async def ping(ctx):
-    await ctx.send('pong')
+    msg = await ctx.send('pong')
 
-bot.run('token') # Le token de vautre bot
+# Commande pour afficher le statu du serveur en version textuelle  
+@bot.command()
+async def serveur(message_info) :
+    # envoi tu message de base
+    message = await message_info.send("go")
+
+    # Démarrage de la tache en arrière-plan
+    my_background_task_2.start(message)
+
+
+bot.run('TOKEN')
